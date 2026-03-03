@@ -1,0 +1,131 @@
+# ALN Schema: Neurodynamic Matrix (NDM) State Definitions
+# Version: 1.0.0
+# Purpose: Define NDM states, monotone transitions, and K-score thresholds
+# Governance: Multi-sig ROW/RPM proposal required for changes
+
+aln file security.ndm.v1.aln
+
+namespace security.ndm.v1
+
+# NDM State Enum - Monotone degradation only (no upgrades)
+enum NdmState
+  Normal          # NDM 0.0-0.3: Full capabilities
+  Monitoring      # NDM 0.3-0.6: Enhanced monitoring, no new capabilities
+  ObserveOnly     # NDM 0.6-0.8: Read-only, freeze new commands
+  Freeze          # NDM 0.8-0.9: All control suspended
+  Quarantine      # NDM 0.9-1.0: Full isolation, audit required
+
+# NDM Snapshot Record
+record NdmSnapshot
+  session_id uuid
+  timestamp i64
+  k_score f64              # Risk/suspicion score (0.0-1.0)
+  r_score f64              # Resource usage score
+  e_score f64              # Eco-impact score
+  current_state NdmState
+  previous_state NdmState
+  suspicion_triggers list<string>
+  row_reference string     # ROW ID anchoring this snapshot
+  cyberspectre_trace_id string
+
+# NDM Threshold Configuration
+record NdmThresholds
+  normal_ceiling f64 = 0.3
+  monitoring_ceiling f64 = 0.6
+  observe_only_ceiling f64 = 0.8
+  freeze_ceiling f64 = 0.9
+  quarantine_ceiling f64 = 1.0
+  auto_freeze_threshold f64 = 0.7
+  multisig_threshold f64 = 0.5
+
+# NDM Transition Event (Irreversible)
+record NdmTransition
+  from_state NdmState
+  to_state NdmState
+  timestamp i64
+  trigger string
+  k_score_at_transition f64
+  row_id string
+  cyberspectre_trace_id string
+  irreversible bool = true
+
+# Suspicion Trigger Definitions
+record SuspicionTrigger
+  trigger_id string
+  trigger_type string
+  severity f64
+  ndm_increment f64
+  description string
+
+# Predefined Suspicion Triggers
+const SUSPICION_TRIGGERS list<SuspicionTrigger> = [
+  {
+    trigger_id: "unauthorized_did_session",
+    trigger_type: "auth",
+    severity: 0.3,
+    ndm_increment: 0.15,
+    description: "Session initiated from unauthorized DID"
+  },
+  {
+    trigger_id: "unregistered_network_endpoint",
+    trigger_type: "network",
+    severity: 0.4,
+    ndm_increment: 0.2,
+    description: "Connection to unregistered network endpoint"
+  },
+  {
+    trigger_id: "unusual_swarm_command_sequence",
+    trigger_type: "swarm",
+    severity: 0.5,
+    ndm_increment: 0.25,
+    description: "Anomalous Nanoswarm command pattern detected"
+  },
+  {
+    trigger_id: "capability_escalation_attempt",
+    trigger_type: "capability",
+    severity: 0.6,
+    ndm_increment: 0.3,
+    description: "Attempt to escalate capabilities beyond grant"
+  },
+  {
+    trigger_id: "offline_envelope_bypass",
+    trigger_type: "envelope",
+    severity: 0.7,
+    ndm_increment: 0.35,
+    description: "Attempt to bypass zes-envelope verification"
+  },
+  {
+    trigger_id: "sudo_timestamp_anomaly",
+    trigger_type: "temporal",
+    severity: 0.5,
+    ndm_increment: 0.25,
+    description: "Timestamp inconsistency in privileged operation"
+  },
+  {
+    trigger_id: "weaponization_pattern_detected",
+    trigger_type: "weaponization",
+    severity: 0.9,
+    ndm_increment: 0.5,
+    description: "Pattern matching weaponization signature library"
+  }
+]
+
+# Invariant: NDM transitions are monotone (no state upgrades)
+invariant ndm_monotone_degradation
+  forall transition: NdmTransition,
+    transition.from_state <= transition.to_state
+
+# Invariant: Quarantine requires K-score >= threshold
+invariant quarantine_threshold
+  forall snapshot: NdmSnapshot,
+    snapshot.current_state == Quarantine -> snapshot.k_score >= 0.9
+
+# Invariant: All transitions must have ROW reference
+invariant transition_anchored
+  forall transition: NdmTransition,
+    transition.row_id != ""
+
+# Invariant: Cyberspectre trace required for audit
+invariant transition_traced
+  forall transition: NdmTransition,
+    transition.cyberspectre_trace_id != ""
