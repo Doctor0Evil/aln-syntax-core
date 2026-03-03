@@ -1,0 +1,166 @@
+# ALN Schema: Sourze Policy and Capability Definitions
+# Version: 1.0.0
+# Purpose: Define Sourze capabilities, DID requirements, forbidden combinations
+# Governance: Non-weaponization constraints embedded in capability lattice
+
+aln file security.sourze.policy.v1.aln
+
+namespace security.sourze.policy.v1
+
+# Capability Enum - All privileged operations
+enum SourzeCapability
+  # Network capabilities
+  NetClient
+  NetServer
+  RawSocket
+  
+  # Filesystem capabilities
+  FsRead
+  FsWrite
+  FsExecute
+  
+  # System capabilities
+  KernelGuard
+  ProcessSpawn
+  EnvAccess
+  
+  # Nanoswarm capabilities (NON-WEAPONIZED)
+  NanoswarmCtrl
+  NanoswarmMonitor
+  NanoswarmDiagnostics
+  
+  # AI-Chat capabilities
+  AiChatBridge
+  AiChatSession
+  
+  # Hardware capabilities
+  UsbHid
+  SerialMcu
+  GpuCompute
+  
+  # Governance capabilities
+  RowWrite
+  RpmWrite
+  NdmRead
+
+# Non-Weaponization Envelope for Nanoswarm
+record NanoswarmNonWeaponEnvelope
+  envelope_id uuid
+  permitted_missions list<string> = [
+    "ecological_restoration",
+    "clinical_assistive_care",
+    "diagnostics",
+    "canal_construction",
+    "eco_corridor_setup",
+    "neuromorphic_swarm_maintenance"
+  ]
+  forbidden_missions list<string> = [
+    "kinetic_damage",
+    "crowd_control",
+    "surveillance_without_consent",
+    "weapon_deployment",
+    "offensive_operations"
+  ]
+  effect_type string
+  mission_class string
+  requires_multi_sig bool = true
+
+# Forbidden Capability Combinations (Weaponization Prevention)
+record ForbiddenCapabilityCombo
+  combo_id string
+  capabilities list<SourzeCapability>
+  reason string
+  severity string  # "critical", "high", "medium"
+
+# Predefined Forbidden Combinations
+const FORBIDDEN_COMBOS list<ForbiddenCapabilityCombo> = [
+  {
+    combo_id: "weapon_ctrl_network",
+    capabilities: [NanoswarmCtrl, NetServer],
+    reason: "Prevents remote weaponization of Nanoswarm",
+    severity: "critical"
+  },
+  {
+    combo_id: "ctrl_fs_hardware",
+    capabilities: [NanoswarmCtrl, FsWrite, UsbHid],
+    reason: "Prevents hardware takeover via swarm control",
+    severity: "critical"
+  },
+  {
+    combo_id: "ctrl_fs_serial",
+    capabilities: [NanoswarmCtrl, FsWrite, SerialMcu],
+    reason: "Prevents MCU exploitation via swarm control",
+    severity: "critical"
+  },
+  {
+    combo_id: "ctrl_gpu",
+    capabilities: [NanoswarmCtrl, GpuCompute],
+    reason: "Prevents GPU-based attack vector via swarm",
+    severity: "high"
+  },
+  {
+    combo_id: "ai_network_server",
+    capabilities: [AiChatBridge, NetServer],
+    reason: "Prevents AI tunnel exploitation",
+    severity: "high"
+  },
+  {
+    combo_id: "kernel_network",
+    capabilities: [KernelGuard, NetServer],
+    reason: "Prevents kernel-level network exploitation",
+    severity: "critical"
+  }
+]
+
+# Sourze Manifest Structure
+record SourzeManifest
+  manifest_id uuid
+  did_owner string           # Bostrom DID of owner
+  did_host string            # Bostrom DID of host
+  did_auditor string         # Bostrom DID of auditor
+  capabilities list<SourzeCapability>
+  eco_vector EcoVector
+  ndm_ceiling f64
+  non_weapon_envelope NanoswarmNonWeaponEnvelope
+  code_anchor_hash string    # Abstract, algo-negotiable
+  zes_envelope string        # Zes-encryption envelope
+  authorship_proof AuthorshipProof
+  timestamp i64
+
+# EcoVector Reference (from eco.metrics.v1.aln)
+record EcoVector
+  gco2_per_joule f64
+  eco_impact_score f64
+  energy_autonomy_pct f64
+  eco_floor_minimum f64
+
+# Authorship Proof (from aln.authorship.proof.v1.aln)
+record AuthorshipProof
+  author_dids list<string>
+  row_reference string
+  googolswarm_tx_id string
+  git_signed_tag string
+
+# Invariant: NanoswarmCtrl requires non-weapon envelope
+invariant nanoswarm_non_weapon
+  forall manifest: SourzeManifest,
+    NanoswarmCtrl in manifest.capabilities ->
+    manifest.non_weapon_envelope != null
+
+# Invariant: Forbidden combinations must be rejected
+invariant no_forbidden_combos
+  forall manifest: SourzeManifest,
+    forall combo: FORBIDDEN_COMBOS,
+      not (forall cap: combo.capabilities, cap in manifest.capabilities)
+
+# Invariant: All manifests require multi-DID envelope
+invariant multi_did_required
+  forall manifest: SourzeManifest,
+    manifest.did_owner != "" &&
+    manifest.did_host != "" &&
+    manifest.did_auditor != ""
+
+# Invariant: EcoVector must meet floor
+invariant eco_floor_enforced
+  forall manifest: SourzeManifest,
+    manifest.eco_vector.eco_impact_score >= manifest.eco_vector.eco_floor_minimum
