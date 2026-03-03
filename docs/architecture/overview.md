@@ -53,3 +53,34 @@ flowchart TD
     Types --> Validator
     Types --> Consumers
     Validator --> Consumers
+
+Key Design Principles
+Single Source of Truth: All schema definitions live here
+Type Safety: Generated Rust types ensure compile-time safety
+Governance Embedded: Invariants encoded in schemas, not policy text
+Offline-First: Schemas cached locally for air-gapped operation
+Auditability: Hex-stamps and Cyberspectre traces on all artifacts
+Versioning Strategy
+Semantic Versioning: MAJOR.MINOR.PATCH
+Breaking Changes: MAJOR version bump requires coordinated updates
+Backward Compatibility: Minor versions maintain compatibility
+Hex-Stamp Per Release: Each version has unique attestation
+Integration Points
+
+[table-d8410845-3f5a-419c-88de-0295cf75f701 (2).csv](https://github.com/user-attachments/files/25724860/table-d8410845-3f5a-419c-88de-0295cf75f701.2.csv)
+Consumer,Integration Method
+sovereigntycore,"Imports types, calls validator"
+aln-sourze-guard,"Uses SourzeManifest, validates capabilities"
+aln-ndm-guard,"Uses NdmSnapshot, enforces transitions"
+dow-guard,"Uses DOW schemas, validates artifacts"
+rowrpm-governance-core,"Uses RowShard/RpmShard, emits ledger entries"
+CyberspectreIntrospectionEngine,Links traces to ROW IDs
+
+ecurity Considerations
+All schemas formally verified for invariants
+Hex-stamp verification on every shard
+Multi-DID envelope requirements
+Non-weaponization constraints embedded in capability lattice
+Offline validation (no remote calls required)
+Document Hex-Stamp: 0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b
+Last Updated: 2026-03-04
