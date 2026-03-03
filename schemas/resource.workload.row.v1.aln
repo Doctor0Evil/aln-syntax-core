@@ -1,0 +1,72 @@
+# ALN Schema: Resource Ownership Record (ROW) Definitions
+# Version: 1.0.0
+# Purpose: Define ROW shards for requested work, governance anchoring
+# Governance: Append-only, timestamped, anchored to Organichain/Googolswarm
+
+aln file resource.workload.row.v1.aln
+
+namespace resource.workload.row.v1
+
+# ROW Shard Structure
+record RowShard
+  row_id uuid
+  timestamp i64
+  session_id uuid
+  workload_type string
+  requested_resources ResourceRequest
+  granted_resources ResourceGrant
+  eco_vector EcoVector
+  ndm_state NdmState
+  did_requester string
+  did_granter string
+  cyberspectre_trace_id string
+  hex_stamp string
+  ledger_anchor LedgerAnchor
+  previous_row_id uuid
+
+# Resource Request
+record ResourceRequest
+  cpu_cores u32
+  memory_mb u64
+  network_bandwidth_mbps f64
+  storage_gb u64
+  swarm_nodes u32
+  duration_seconds i64
+
+# Resource Grant
+record ResourceGrant
+  cpu_cores u32
+  memory_mb u64
+  network_bandwidth_mbps f64
+  storage_gb u64
+  swarm_nodes u32
+  duration_seconds i64
+  quota_remaining_pct f64
+
+# Ledger Anchor Reference
+record LedgerAnchor
+  ledger_type string          # "organichain", "googolswarm", "zeta"
+  transaction_id string
+  block_height u64
+  merkle_proof string
+  anchor_timestamp i64
+
+# Invariant: ROW shards are append-only (previous_row_id links chain)
+invariant row_append_only
+  forall shard: RowShard,
+    shard.previous_row_id != null || shard.row_id is_genesis
+
+# Invariant: All ROW shards must have hex-stamp
+invariant row_hex_stamped
+  forall shard: RowShard,
+    shard.hex_stamp.starts_with("0x") && shard.hex_stamp.length == 66
+
+# Invariant: Cyberspectre trace required for audit
+invariant row_traced
+  forall shard: RowShard,
+    shard.cyberspectre_trace_id != ""
+
+# Invariant: Ledger anchor required for finality
+invariant row_anchored
+  forall shard: RowShard,
+    shard.ledger_anchor.transaction_id != ""
